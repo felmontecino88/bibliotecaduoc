@@ -144,5 +144,4 @@ public class LibroController {
                 UsuarioResponse usuario = libroService.obtenerUsuarioDeLibro(id);
                 return ResponseEntity.ok(usuario);
         }
-
 }
