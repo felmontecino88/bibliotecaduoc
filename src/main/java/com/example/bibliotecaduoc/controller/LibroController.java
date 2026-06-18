@@ -1,10 +1,12 @@
 package com.example.bibliotecaduoc.controller;
 
 import java.util.List;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -15,7 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.example.bibliotecaduoc.dto.CreateLibroRequest;
 import com.example.bibliotecaduoc.dto.PokemonResponse;
+import com.example.bibliotecaduoc.dto.PrestarLibroRequest;
 import com.example.bibliotecaduoc.dto.UpdateLibroRequest;
+import com.example.bibliotecaduoc.dto.UsuarioResponse;
 import com.example.bibliotecaduoc.exception.ResourceNotFoundException;
 import com.example.bibliotecaduoc.mapper.LibroMapper;
 import com.example.bibliotecaduoc.model.Libro;
@@ -34,7 +38,8 @@ public class LibroController {
         private final WebClient pokeApiWebClient;
 
         // Constructor injection (mejor práctica 2026)
-        public LibroController(LibroService libroService, WebClient pokeApiWebClient) {
+        public LibroController(LibroService libroService,
+                        @Qualifier("pokeApiWebClient") WebClient pokeApiWebClient) {
                 this.libroService = libroService;
                 this.pokeApiWebClient = pokeApiWebClient;
         }
@@ -109,6 +114,35 @@ public class LibroController {
                                 .retrieve().bodyToMono(PokemonResponse.class).block();
 
                 return ResponseEntity.ok(pokemon);
+        }
+
+        /**
+         * Registra el préstamo de un libro a un usuario (microservicio "usuarios").
+         * 409 si el libro ya está prestado, 404 si el libro o el usuario no existen.
+         */
+        @PatchMapping("{id}/prestamo")
+        public ResponseEntity<Libro> prestarLibro(@PathVariable int id,
+                        @Valid @RequestBody PrestarLibroRequest request) {
+                Libro libro = libroService.prestarLibro(id, request.usuarioId());
+                return ResponseEntity.ok(libro);
+        }
+
+        /**
+         * Marca un libro prestado como devuelto. 409 si el libro no estaba prestado.
+         */
+        @DeleteMapping("{id}/prestamo")
+        public ResponseEntity<Libro> devolverLibro(@PathVariable int id) {
+                Libro libro = libroService.devolverLibro(id);
+                return ResponseEntity.ok(libro);
+        }
+
+        /**
+         * Obtiene los datos del usuario que actualmente tiene el libro en préstamo.
+         */
+        @GetMapping("{id}/usuario")
+        public ResponseEntity<UsuarioResponse> obtenerUsuarioDeLibro(@PathVariable int id) {
+                UsuarioResponse usuario = libroService.obtenerUsuarioDeLibro(id);
+                return ResponseEntity.ok(usuario);
         }
 
 }

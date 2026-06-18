@@ -79,6 +79,32 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Maneja conflictos de disponibilidad de un libro (ya prestado / no estaba prestado)
+     */
+    @ExceptionHandler(LibroNoDisponibleException.class)
+    public ProblemDetail handleLibroNoDisponible(LibroNoDisponibleException ex) {
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+
+        problem.setTitle("Libro No Disponible");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    /**
+     * Maneja fallas de comunicación con servicios externos (p.ej. microservicio "usuarios")
+     */
+    @ExceptionHandler(ServicioExternoException.class)
+    public ProblemDetail handleServicioExterno(ServicioExternoException ex) {
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+
+        problem.setTitle("Servicio Externo No Disponible");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    /**
      * Maneja errores generales del servidor
      */
     @ExceptionHandler(Exception.class)

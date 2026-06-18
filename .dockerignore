@@ -1,0 +1,6 @@
+target/
+.git/
+.claude/
+.idea/
+*.md
+src/main/resources/application-secrets.properties

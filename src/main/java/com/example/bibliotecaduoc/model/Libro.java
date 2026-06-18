@@ -35,6 +35,11 @@ public class Libro {
     @Column(name = "autor", nullable = false, length = 150)
     private String autor;
 
+    // id del usuario (microservicio "usuarios") que tiene este libro en préstamo.
+    // null = libro disponible. Es una referencia "blanda": no hay FK real entre bases de datos.
+    @Column(name = "usuario_id")
+    private Integer usuarioId;
+
     // Constructor sin argumentos (requerido por JPA/Hibernate)
     public Libro() {}
 
@@ -96,6 +101,14 @@ public class Libro {
 
     public void setAutor(String autor) {
         this.autor = autor;
+    }
+
+    public Integer getUsuarioId() {
+        return usuarioId;
+    }
+
+    public void setUsuarioId(Integer usuarioId) {
+        this.usuarioId = usuarioId;
     }
 
 }

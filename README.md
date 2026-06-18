@@ -242,3 +242,84 @@ Debería mostrar la tabla vacía pero existente.
    ```
 3. Verifica con **GET /api/v1/libros**
 
+
+---
+
+# Guía 2: Comunicación con el microservicio "usuarios"
+
+Este repo ("libros", puerto `8080`) se comunica vía **WebClient** con el microservicio hermano
+[`dsy1103_usuarios`](../dsy1103_usuarios) (puerto `8081`) para registrar y consultar qué usuario
+tiene actualmente en préstamo cada libro.
+
+## Modelo de datos
+
+`Libro` agrega un campo `usuarioId` (`Integer`, columna `usuario_id`, nullable):
+
+- `usuarioId == null` → el libro está **disponible**.
+- `usuarioId == <id>` → el libro está **prestado** al usuario con ese id en el microservicio
+  "usuarios". Es una referencia "blanda": no existe una foreign key real entre las dos bases
+  de datos (viven en proyectos Neon distintos).
+
+## Configuración
+
+En `application.properties`:
+
+```properties
+server.port=8080
+usuarios.service.url=http://localhost:8081
+```
+
+`usuarios.service.url` se inyecta en el bean `usuariosWebClient` (`config/WebClientConfig.java`),
+separado del `pokeApiWebClient` ya existente. Ambos beans tienen nombre explícito
+(`@Bean("pokeApiWebClient")` / `@Bean("usuariosWebClient")`) y se inyectan con `@Qualifier`
+para evitar ambigüedad.
+
+## Endpoints nuevos
+
+| Método | Ruta                          | Descripción                                                  |
+|--------|--------------------------------|---------------------------------------------------------------|
+| PATCH  | `/api/v1/libros/{id}/prestamo` | Presta el libro `{id}` al usuario indicado en el body          |
+| DELETE | `/api/v1/libros/{id}/prestamo` | Marca el libro `{id}` como devuelto (`usuarioId` → `null`)     |
+| GET    | `/api/v1/libros/{id}/usuario`  | Devuelve los datos del usuario que tiene el libro `{id}`        |
+
+### Ejemplos
+
+```bash
+# Prestar el libro 1 al usuario 5
+curl -X PATCH http://localhost:8080/api/v1/libros/1/prestamo \
+  -H "Content-Type: application/json" \
+  -d '{"usuarioId": 5}'
+
+# Ver quién tiene el libro 1
+curl http://localhost:8080/api/v1/libros/1/usuario
+
+# Devolver el libro 1
+curl -X DELETE http://localhost:8080/api/v1/libros/1/prestamo
+```
+
+### Respuestas de error
+
+| Código | Cuándo ocurre                                                                 |
+|--------|---------------------------------------------------------------------------------|
+| 404    | El libro `{id}` no existe, o el `usuarioId` no existe en el microservicio "usuarios" |
+| 409    | `PATCH .../prestamo` sobre un libro ya prestado, o `DELETE .../prestamo` sobre un libro no prestado |
+| 503    | El microservicio "usuarios" no responde (apagado, timeout, etc.)                |
+
+## Levantar ambos servicios
+
+1. Levanta primero `usuarios` (puerto `8081`) — ver su propio `README.md` para configurar su
+   conexión a Neon (usa un proyecto Neon **distinto** al de este repo).
+2. Levanta `bibliotecaduoc` (puerto `8080`):
+   ```bash
+   ./mvnw spring-boot:run
+   ```
+3. Al iniciar, Hibernate agrega automáticamente la columna `usuario_id` a la tabla `libros`
+   existente (`spring.jpa.hibernate.ddl-auto=update`).
+
+## Apuntar a un deploy real
+
+Si más adelante despliegas `usuarios` en otra máquina/URL, basta con cambiar
+`usuarios.service.url` en `application.properties` (por ejemplo,
+`usuarios.service.url=https://usuarios.mi-dominio.com`) — no se requiere ningún otro cambio
+de código.
+
